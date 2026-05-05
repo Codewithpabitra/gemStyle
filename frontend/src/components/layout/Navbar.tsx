@@ -36,7 +36,7 @@ export function Navbar() {
       background: "rgba(9,9,11,0.85)",
       backdropFilter: "blur(16px)",
       borderBottom: "1px solid var(--border)",
-      padding: "5px"
+      padding: "5px 0px"
     }}>
       <div style={{
         maxWidth: 1200, margin: "0 auto",
@@ -54,14 +54,14 @@ export function Navbar() {
           }}>
             <Sparkles size={16} color="#0d0d0f" />
           </div>
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 17 }}>
+          <span style={{ fontFamily: "var(--font-display)", fontWeight: 700, }} className="text-md sm:text-[16px]">
             gem<span style={{ color: "var(--accent)" }}>Style</span>
           </span>
         </Link>
 
         {/* Desktop Nav */}
         {isAuthenticated && (
-          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
             {NAV_LINKS.map(({ to, label, icon: Icon }) => {
               const active = location.pathname === to;
               return (
@@ -79,7 +79,7 @@ export function Navbar() {
                   }}
                 >
                   <Icon size={15} />
-                  {label}
+                  <p className="hidden md:block">{label}</p>
                 </Link>
               );
             })}
@@ -90,7 +90,7 @@ export function Navbar() {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           {isAuthenticated ? (
             <>
-              {/* Credits badge */}
+              {/* Credits badge
               <div style={{
                 display: "flex", alignItems: "center", gap: 6,
                 padding: "5px 12px",
@@ -98,12 +98,12 @@ export function Navbar() {
                 border: "1px solid rgba(200,240,110,0.15)",
                 borderRadius: 99,
                 fontSize: 13,
-              }}>
+              }} >
                 <Sparkles size={12} color="var(--accent)" />
                 <span style={{ color: "var(--accent)", fontWeight: 600 }}>
                   {user?.credits ?? 0}
                 </span>
-              </div>
+              </div> */}
 
               {/* User menu */}
               <Link to="/settings" style={{
@@ -116,7 +116,7 @@ export function Navbar() {
                 color: "var(--text-secondary)",
               }}>
                 <User size={14} />
-                <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <span style={{ maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} className="hidden sm:block">
                   {user?.name}
                 </span>
               </Link>

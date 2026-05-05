@@ -234,6 +234,8 @@ export default function StudioPage() {
               >
                 aistudio.google.com
               </a>
+              <br />
+              <p>Because AI Costs money and I have no money.😭</p>
             </div>
             <Input
               type="password"
