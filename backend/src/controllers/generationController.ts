@@ -2,13 +2,16 @@ import { Request, Response } from "express";
 import { Generation } from "../models/Generation.js";
 import { User } from "../models/User.js";
 import { generateStyledImage } from "../services/geminiService.js";
-import { uploadToCloudinary, uploadBase64ToCloudinary } from "../services/cloudinaryService.js";
+import {
+  isCloudinaryConfigured,
+  uploadToCloudinary,
+  uploadBase64ToCloudinary,
+} from "../services/cloudinaryService.js";
 import { getStyleById, getAllStyles } from "../utils/artStyles.js";
-import { sendSuccess, sendError } from "../utils/apiResponse.js";
+import { sendSuccess } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { AppError } from "../utils/AppError.js";
 import type { GenerateImageInput } from "../validators/schemas.js";
-import { env } from "../config/env.js";
 
 export const getStyles = asyncHandler(async (_req: Request, res: Response) => {
   const styles = getAllStyles();
@@ -29,16 +32,24 @@ export const generateImage = asyncHandler(async (req: Request, res: Response) =>
   if (!user) throw AppError.notFound("User not found");
 
   if (user.credits < style.creditsRequired) {
-    throw new AppError(`Insufficient credits. This style requires ${style.creditsRequired} credit(s).`, 402);
+    throw new AppError(
+      `Insufficient credits. This style requires ${style.creditsRequired} credit(s). You have ${user.credits}.`,
+      402
+    );
   }
 
-  // Upload original to Cloudinary (if configured), else use base64
+  // ── Step 1: Upload original image (optional, best-effort) ──────
   let originalImageUrl = "";
-  if (env.CLOUDINARY_CLOUD_NAME) {
-    originalImageUrl = await uploadToCloudinary(file.buffer, "originals");
+  if (isCloudinaryConfigured()) {
+    const uploaded = await uploadToCloudinary(file.buffer, "originals");
+    if (uploaded) {
+      originalImageUrl = uploaded;
+    } else {
+      console.warn("[Generate] Cloudinary upload of original failed — continuing without it");
+    }
   }
 
-  // Create pending generation record
+  // ── Step 2: Create pending generation record ───────────────────
   const generation = await Generation.create({
     userId,
     styleId,
@@ -49,31 +60,45 @@ export const generateImage = asyncHandler(async (req: Request, res: Response) =>
     status: "pending",
   });
 
-  // Deduct credits optimistically
+  // ── Step 3: Deduct credits optimistically ─────────────────────
   await User.findByIdAndUpdate(userId, { $inc: { credits: -style.creditsRequired } });
 
   try {
-    // Generate image with Gemini
+    // ── Step 4: Call Gemini ──────────────────────────────────────
+    console.log(`[Generate] Calling Gemini for style "${style.name}"...`);
     const result = await generateStyledImage(
       geminiApiKey,
       file.buffer,
       file.mimetype,
       style.prompt
     );
+    console.log(`[Generate] Gemini returned image (${result.mimeType})`);
 
-    // Upload generated image
-    let generatedImageUrl = "";
-    if (env.CLOUDINARY_CLOUD_NAME) {
-      generatedImageUrl = await uploadBase64ToCloudinary(
+    // ── Step 5: Store generated image ────────────────────────────
+    let generatedImageUrl: string;
+
+    if (isCloudinaryConfigured()) {
+      const cloudUrl = await uploadBase64ToCloudinary(
         result.imageBase64,
         result.mimeType,
         "generated"
       );
+
+      if (cloudUrl) {
+        generatedImageUrl = cloudUrl;
+        console.log("[Generate] Generated image uploaded to Cloudinary ✅");
+      } else {
+        // Cloudinary failed — use base64 inline (works fine, just larger response)
+        console.warn("[Generate] Cloudinary upload failed — using inline base64 fallback");
+        generatedImageUrl = `data:${result.mimeType};base64,${result.imageBase64}`;
+      }
     } else {
+      // Cloudinary not configured — use inline base64
       generatedImageUrl = `data:${result.mimeType};base64,${result.imageBase64}`;
+      console.log("[Generate] Cloudinary not configured — using inline base64");
     }
 
-    // Update generation record
+    // ── Step 6: Mark generation as completed ─────────────────────
     await Generation.findByIdAndUpdate(generation._id, {
       status: "completed",
       generatedImageUrl,
@@ -81,14 +106,21 @@ export const generateImage = asyncHandler(async (req: Request, res: Response) =>
 
     const completed = await Generation.findById(generation._id);
     sendSuccess(res, { generation: completed }, "Image generated successfully", 201);
+
   } catch (error) {
-    // Refund credits on failure
-    await User.findByIdAndUpdate(userId, { $inc: { credits: style.creditsRequired } });
+    // ── On any error: refund credits & mark as failed ─────────────
+    console.error("[Generate] Error — refunding credits and marking failed:", error);
+
+    await User.findByIdAndUpdate(userId, {
+      $inc: { credits: style.creditsRequired },
+    });
+
     await Generation.findByIdAndUpdate(generation._id, {
       status: "failed",
       errorMessage: error instanceof Error ? error.message : "Unknown error",
     });
-    throw error;
+
+    throw error; // re-throw so errorHandler sends the response
   }
 });
 

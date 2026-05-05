@@ -24,7 +24,7 @@ const generationSchema = new Schema<IGeneration>(
     },
     styleId: { type: String, required: true },
     styleName: { type: String, required: true },
-    originalImageUrl: { type: String, required: true },
+    originalImageUrl: { type: String, default: "" },
     generatedImageUrl: { type: String, default: "" },
     prompt: { type: String, required: true },
     creditsUsed: { type: Number, default: 1 },
