@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "nodemon --watch src -e ts,js --exec node --loader ts-node/esm src/app.ts",
+    "dev": "nodemon --watch src --exec tsx src/app.ts",
     "build": "tsc",
     "start": "node dist/app.js"
   },
@@ -34,6 +34,7 @@
     "@types/node": "^22.10.7",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.3"
   }
 }
