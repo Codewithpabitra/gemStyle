@@ -61,7 +61,7 @@ export function Navbar() {
 
         {/* Desktop Nav */}
         {isAuthenticated && (
-          <div style={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
             {NAV_LINKS.map(({ to, label, icon: Icon }) => {
               const active = location.pathname === to;
               return (

@@ -457,9 +457,9 @@ export default function LandingPage() {
         padding: "28px 24px",
         textAlign: "center",
         fontSize: 13,
-        color: "var(--text-muted)",
+        color: "white",
       }}>
-        <p>© 2025 gemStyle — Built with Gemini API. Your key, your art.</p>
+        <p>&copy; {new Date().getFullYear()} gemStyle - Built with love💗. Your key, Your art.</p>
       </footer>
     </div>
   );
